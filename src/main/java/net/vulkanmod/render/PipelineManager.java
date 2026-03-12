@@ -31,7 +31,15 @@ public abstract class PipelineManager {
         setTerrainVertexFormat(CustomVertexFormat.COMPRESSED_TERRAIN);
         createBasicPipelines();
         ShaderPluginManager.init();
-        setDefaultShader();
+
+        setShaderGetter(renderType -> {
+            if (renderType == TerrainRenderType.TRANSLUCENT) {
+                return ShaderPluginManager.getActiveTerrainEarlyZShader(renderType.name());
+            } else {
+                return ShaderPluginManager.getActiveTerrainShader(renderType.name());
+            }
+        });
+
         ThreadBuilderPack.defaultTerrainBuilderConstructor();
     }
 
@@ -74,19 +82,19 @@ public abstract class PipelineManager {
     }
 
     public static GraphicsPipeline getTerrainDirectShader(RenderType renderType) {
-        return terrainShader;
+        return ShaderPluginManager.getActiveTerrainShader(renderType != null ? renderType.name : "solid");
     }
 
     public static GraphicsPipeline getTerrainIndirectShader(RenderType renderType) {
-        return terrainShaderEarlyZ;
+        return ShaderPluginManager.getActiveTerrainEarlyZShader(renderType != null ? renderType.name : "translucent");
     }
 
     public static GraphicsPipeline getFastBlitPipeline() {
-        return fastBlitPipeline;
+        return ShaderPluginManager.getActiveFastBlitPipeline();
     }
 
     public static GraphicsPipeline getCloudsPipeline() {
-        return cloudsPipeline;
+        return ShaderPluginManager.getActiveCloudsPipeline();
     }
 
     public static void destroyPipelines() {

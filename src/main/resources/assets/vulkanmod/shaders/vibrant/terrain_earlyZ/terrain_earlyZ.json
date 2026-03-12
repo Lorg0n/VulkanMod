@@ -1,0 +1,19 @@
+{
+    "vertex": "terrain",
+    "fragment": "terrain_earlyZ",
+    "samplers": [ { "name": "Sampler0" } ],
+    "UBOs":[
+        { "type":  "vertex", "binding": 0, "fields":[ { "name": "MVP", "type": "matrix4x4", "count": 16 } ] },
+        { "type":  "fragment", "binding": 1, "fields":[
+            { "name": "FogColor", "type": "float", "count": 4 },
+            { "name": "FogEnvironmentalStart", "type": "float", "count": 1 },
+            { "name": "FogEnvironmentalEnd", "type": "float", "count": 1 },
+            { "name": "FogRenderDistanceStart", "type": "float", "count": 1 },
+            { "name": "FogRenderDistanceEnd", "type": "float", "count": 1 },
+            { "name": "FogSkyEnd", "type": "float", "count": 1 },
+            { "name": "FogCloudsEnd", "type": "float", "count": 1 },
+            { "name": "AlphaCutout", "type": "float", "count": 1 }
+        ] }
+    ],
+    "PushConstants":[ { "name": "ModelOffset", "type": "float", "count": 3 } ]
+}

@@ -24,6 +24,8 @@ public class ShaderPluginManager {
         // Register built-in plugin
         registerPlugin(FALLBACK);
 
+        registerPlugin(new VibrantShaderPlugin());
+
         // Set default plugin
         setActivePlugin("vulkanmod:builtin");
 
