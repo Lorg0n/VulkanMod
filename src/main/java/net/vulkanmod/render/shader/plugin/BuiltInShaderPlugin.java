@@ -30,22 +30,22 @@ public class BuiltInShaderPlugin implements ShaderPlugin {
 
     @Override
     public GraphicsPipeline getTerrainShader(String renderTypeName) {
-        return PipelineManager.getTerrainDirectShader(null);
+        return PipelineManager.getDefaultTerrainShader();
     }
 
     @Override
     public GraphicsPipeline getTerrainEarlyZShader(String renderTypeName) {
-        return PipelineManager.getTerrainIndirectShader(null);
+        return PipelineManager.getDefaultTerrainEarlyZShader();
     }
 
     @Override
     public GraphicsPipeline getFastBlitPipeline() {
-        return PipelineManager.getFastBlitPipeline();
+        return PipelineManager.getDefaultFastBlitPipeline();
     }
 
     @Override
     public GraphicsPipeline getCloudsPipeline() {
-        return PipelineManager.getCloudsPipeline();
+        return PipelineManager.getDefaultCloudsPipeline();
     }
 
     @Override

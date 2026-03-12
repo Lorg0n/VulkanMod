@@ -43,11 +43,6 @@ public abstract class PipelineManager {
         ThreadBuilderPack.defaultTerrainBuilderConstructor();
     }
 
-    public static void setDefaultShader() {
-        setShaderGetter(
-                renderType -> renderType == TerrainRenderType.TRANSLUCENT ? terrainShaderEarlyZ : terrainShader);
-    }
-
     private static void createBasicPipelines() {
         terrainShaderEarlyZ = createPipeline("terrain_earlyZ", terrainVertexFormat);
         terrainShader = createPipeline("terrain", terrainVertexFormat);
@@ -95,6 +90,22 @@ public abstract class PipelineManager {
 
     public static GraphicsPipeline getCloudsPipeline() {
         return ShaderPluginManager.getActiveCloudsPipeline();
+    }
+
+    public static GraphicsPipeline getDefaultTerrainShader() {
+        return terrainShader;
+    }
+
+    public static GraphicsPipeline getDefaultTerrainEarlyZShader() {
+        return terrainShaderEarlyZ;
+    }
+
+    public static GraphicsPipeline getDefaultFastBlitPipeline() {
+        return fastBlitPipeline;
+    }
+
+    public static GraphicsPipeline getDefaultCloudsPipeline() {
+        return cloudsPipeline;
     }
 
     public static void destroyPipelines() {
