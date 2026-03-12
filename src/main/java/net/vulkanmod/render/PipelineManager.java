@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.RenderType;
 import net.vulkanmod.render.chunk.build.thread.ThreadBuilderPack;
 import net.vulkanmod.render.shader.ShaderLoadUtil;
+import net.vulkanmod.render.shader.plugin.ShaderPluginManager;
 import net.vulkanmod.render.vertex.CustomVertexFormat;
 import net.vulkanmod.render.vertex.TerrainRenderType;
 import net.vulkanmod.vulkan.shader.GraphicsPipeline;
@@ -29,6 +30,7 @@ public abstract class PipelineManager {
     public static void init() {
         setTerrainVertexFormat(CustomVertexFormat.COMPRESSED_TERRAIN);
         createBasicPipelines();
+        ShaderPluginManager.init();
         setDefaultShader();
         ThreadBuilderPack.defaultTerrainBuilderConstructor();
     }

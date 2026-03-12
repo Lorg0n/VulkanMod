@@ -4,6 +4,7 @@
   "vulkanmod.options.pages.video": "Video",
   "vulkanmod.options.pages.graphics": "Graphics",
   "vulkanmod.options.pages.optimizations": "Optimizations",
+  "vulkanmod.options.pages.shaders": "Shaders",
   "vulkanmod.options.pages.other": "Other",
 
   "vulkanmod.options.buttons.apply": "Apply",
@@ -47,5 +48,9 @@
   "vulkanmod.options.builderThreads": "Chunk Builder Threads",
   "vulkanmod.options.builderThreads.auto": "Auto",
 
-  "vulkanmod.options.textureAnimations": "Texture Animations"
+  "vulkanmod.options.textureAnimations": "Texture Animations",
+
+  "vulkanmod.options.shader": "Active Shader",
+  "vulkanmod.options.shader.title": "Shader Selection",
+  "vulkanmod.options.shader.info": "Shader Information"
 }

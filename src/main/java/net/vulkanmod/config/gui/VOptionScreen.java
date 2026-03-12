@@ -19,6 +19,7 @@ import net.vulkanmod.config.gui.widget.VAbstractWidget;
 import net.vulkanmod.config.gui.widget.VButtonWidget;
 import net.vulkanmod.config.option.OptionPage;
 import net.vulkanmod.config.option.Options;
+import net.vulkanmod.config.option.ShaderListOption;
 import net.vulkanmod.vulkan.VRenderSystem;
 import net.vulkanmod.vulkan.util.ColorUtil;
 
@@ -73,6 +74,12 @@ public class VOptionScreen extends Screen {
         page = new OptionPage(
                 Component.translatable("vulkanmod.options.pages.optimizations").getString(),
                 Options.getOptimizationOpts()
+        );
+        this.optionPages.add(page);
+
+        page = new OptionPage(
+                Component.translatable("vulkanmod.options.pages.shaders").getString(),
+                ShaderListOption.getShaderOpts()
         );
         this.optionPages.add(page);
 

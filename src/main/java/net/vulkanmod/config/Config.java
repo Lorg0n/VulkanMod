@@ -30,6 +30,8 @@ public class Config {
     public boolean backFaceCulling = true;
     public boolean textureAnimations = true;
 
+    public String selectedShader = "vulkanmod:builtin";
+
     public void write() {
 
         if(!Files.exists(CONFIG_PATH.getParent())) {
