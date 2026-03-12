@@ -12,7 +12,9 @@
             { "name": "FogRenderDistanceEnd", "type": "float", "count": 1 },
             { "name": "FogSkyEnd", "type": "float", "count": 1 },
             { "name": "FogCloudsEnd", "type": "float", "count": 1 },
-            { "name": "AlphaCutout", "type": "float", "count": 1 }
+            { "name": "AlphaCutout", "type": "float", "count": 1 },
+            { "name": "PlayerPos", "type": "float", "count": 3 },
+            { "name": "SunAngle", "type": "float", "count": 1 }
         ] }
     ],
     "PushConstants":[ { "name": "ModelOffset", "type": "float", "count": 3 } ]

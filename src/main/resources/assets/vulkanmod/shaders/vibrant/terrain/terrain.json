@@ -6,20 +6,22 @@
     ],
     "UBOs":[
         { "type":  "vertex", "binding": 0, "fields":[
-            { "name": "MVP", "type": "matrix4x4", "count": 16, "values":[ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] }
+            { "name": "MVP", "type": "matrix4x4", "count": 16 }
         ] },
         { "type":  "fragment", "binding": 1, "fields":[
-            { "name": "FogColor", "type": "float", "count": 4, "values":[ 0.0, 0.0, 0.0, 0.0 ] },
-            { "name": "FogEnvironmentalStart", "type": "float", "count": 1, "values":[ 0.0 ] },
-            { "name": "FogEnvironmentalEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
-            { "name": "FogRenderDistanceStart", "type": "float", "count": 1, "values": [ 1.0 ] },
-            { "name": "FogRenderDistanceEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
-            { "name": "FogSkyEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
-            { "name": "FogCloudsEnd", "type": "float", "count": 1, "values":[ 1.0 ] },
-            { "name": "AlphaCutout", "type": "float", "count": 1, "values": [ 1.0 ] }
+            { "name": "FogColor", "type": "float", "count": 4 },
+            { "name": "FogEnvironmentalStart", "type": "float", "count": 1 },
+            { "name": "FogEnvironmentalEnd", "type": "float", "count": 1 },
+            { "name": "FogRenderDistanceStart", "type": "float", "count": 1 },
+            { "name": "FogRenderDistanceEnd", "type": "float", "count": 1 },
+            { "name": "FogSkyEnd", "type": "float", "count": 1 },
+            { "name": "FogCloudsEnd", "type": "float", "count": 1 },
+            { "name": "AlphaCutout", "type": "float", "count": 1 },
+            { "name": "PlayerPos", "type": "float", "count": 3 },
+            { "name": "SunAngle", "type": "float", "count": 1 }
         ] }
     ],
     "PushConstants":[
-        { "name": "ModelOffset", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] }
+        { "name": "ModelOffset", "type": "float", "count": 3 }
     ]
 }

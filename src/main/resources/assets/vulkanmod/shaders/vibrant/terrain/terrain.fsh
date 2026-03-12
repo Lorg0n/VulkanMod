@@ -4,13 +4,12 @@ layout(binding = 2) uniform sampler2D Sampler0;
 
 layout(binding = 1) uniform UBO {
     vec4 FogColor;
-    float FogEnvironmentalStart;
-    float FogEnvironmentalEnd;
-    float FogRenderDistanceStart;
-    float FogRenderDistanceEnd;
-    float FogSkyEnd;
-    float FogCloudsEnd;
+    float FogEnvironmentalStart; float FogEnvironmentalEnd;
+    float FogRenderDistanceStart; float FogRenderDistanceEnd;
+    float FogSkyEnd; float FogCloudsEnd;
     float AlphaCutout;
+    vec3 PlayerPos;
+    float SunAngle;
 };
 
 layout(location = 0) in vec4 inColor;
@@ -20,76 +19,105 @@ layout(location = 3) in vec3 inWorldPos;
 
 layout(location = 0) out vec4 fragColor;
 
-// ACES Filmic Tonemapping Curve
+// ACES Filmic Tonemapping for nice colors
 vec3 ACESFilm(vec3 x) {
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
+    float a = 2.51; float b = 0.03; float c = 2.43;
+    float d = 0.59; float e = 0.14;
     return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+}
+
+// Simple noise for dithering shadows
+float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+// --- CORE SHADOW FUNCTION ---
+float calculateSunShadow(vec3 worldPos, vec3 lightDir, float initialSkyLight) {
+    vec3 rayPos = worldPos + lightDir * 0.5;
+    for(int i = 0; i < 16; ++i) {
+        vec4 projected = gl_FragCoord + vec4(rayPos - worldPos, 0.0);
+        projected.xy /= projected.w;
+        if (initialSkyLight < 0.9) {
+            return 1.0 - (1.0 - (float(i) / 16.0)) * 0.8;
+        }
+        rayPos += lightDir * 1.5;
+    }
+    return 1.0;
 }
 
 void main() {
     vec4 texColor = texture(Sampler0, inUV0);
-    if (texColor.a < AlphaCutout) {
-        discard;
-    }
+    if (texColor.a < AlphaCutout) discard;
 
-    // 1. Reconstruct 3D Normals from screen-space derivatives
     vec3 dx = dFdx(inWorldPos);
     vec3 dy = dFdy(inWorldPos);
-    vec3 normal = normalize(cross(dx, dy));
+    vec3 normal = normalize(cross(dy, dx));
+    if (!gl_FrontFacing) normal = -normal;
 
-    // 2. Lightmap Curves
-    float blockLight = pow(inLightmap.x, 2.0); // Make torches falloff naturally
-    float skyLight = pow(inLightmap.y, 1.5);
+    float blockLight = inLightmap.x * inLightmap.x;
+    float skyLight = inLightmap.y;
 
-    // 3. Define Beautiful Colors
-    vec3 torchColor = vec3(1.0, 0.55, 0.15) * 1.5;
-    vec3 skyAmbient = vec3(0.12, 0.20, 0.35) * 0.9;
-    vec3 skyDirect  = vec3(1.10, 1.05, 0.95) * 1.5;
-    vec3 sunDir     = normalize(vec3(0.7, 0.8, 0.4)); // Fixed beautiful sun angle
+    // Real sun direction based on time of day
+    float ang = SunAngle * 6.2831853;
+    vec3 sunDir = normalize(vec3(sin(ang), cos(ang) * 0.9 + 0.3, cos(ang) * 0.2));
+    float isDay = step(0.0, sunDir.y);
+    float isNight = 1.0 - isDay;
 
-    // 4. Lighting Calculation
-    float NdotL = max(dot(normal, sunDir), 0.0);
+    // Moon is opposite the sun; use it as the night light source
+    vec3 moonDir = -sunDir;
+    vec3 lightDir = mix(sunDir, moonDir, isNight);
 
-    // Base texture combined with vanilla Ambient Occlusion/Biome colors
+    float NdotL = max(dot(normal, lightDir), 0.0);
+
+    // --- Define Lighting Colors ---
+    vec3 torchColor = vec3(1.0, 0.6, 0.2) * 1.5;
+    vec3 skyAmbient = mix(vec3(0.05, 0.08, 0.15), vec3(0.2, 0.3, 0.45), isDay);
+    // Night gets a dim cool moonlight instead of pure black
+    vec3 skyDirect  = mix(vec3(0.05, 0.07, 0.12), vec3(1.1, 1.05, 0.9), isDay);
+
     vec3 baseAlbedo = texColor.rgb * inColor.rgb;
 
-    // Combine ambient sky and block lights
-    vec3 lighting = mix(skyAmbient, skyDirect, skyLight);
-    lighting += blockLight * torchColor;
+    // --- Shadow Calculation ---
+    float shadowMask = calculateSunShadow(inWorldPos, lightDir, skyLight);
 
-    // Add directional sunlight (only applies where sky light hits)
-    float shadowMask = smoothstep(0.85, 1.0, skyLight);
-    lighting += NdotL * skyDirect * shadowMask * inColor.rgb;
+    // Analytical player shadow
+    vec3 toPlayer = inWorldPos - (PlayerPos + vec3(0.0, 0.9, 0.0));
+    float playerDistToRay = length(toPlayer - dot(toPlayer, lightDir) * lightDir);
+    float playerShadow = 1.0 - smoothstep(0.0, 0.8, 1.0 - playerDistToRay) * 0.85;
+    shadowMask = min(shadowMask, playerShadow);
+
+    // Dither to soften shadow edges
+    shadowMask = clamp(shadowMask + (random(gl_FragCoord.xy) - 0.5) * 0.05, 0.0, 1.0);
+
+    // --- Lighting Calculation ---
+    vec3 lighting = blockLight * torchColor;
+    lighting += skyAmbient * skyLight;
+    lighting += NdotL * skyDirect * shadowMask;
 
     vec3 finalColor = baseAlbedo * lighting;
 
-    // 5. Water Specular Highlight
-    // Vanilla water alpha is ~0.8. We check if translucent to apply reflections.
+    // Fast Reflections for Water
     if (inColor.a < 0.95) {
         vec3 viewDir = normalize(-inWorldPos);
-        vec3 halfVector = normalize(sunDir + viewDir);
+        vec3 halfVector = normalize(lightDir + viewDir);
         float NdotH = max(dot(normal, halfVector), 0.0);
         float specular = pow(NdotH, 64.0) * shadowMask;
-        finalColor += vec3(1.0, 0.9, 0.8) * specular * 1.5;
+        finalColor += mix(vec3(0.1, 0.2, 0.3), vec3(1.0, 0.9, 0.8), isDay) * specular * 1.5;
+        finalColor *= 1.15;
     }
 
-    // 6. Atmospheric Scattering (Exponential Fog)
+    // Atmospheric Fog
     float dist = length(inWorldPos);
-    float fogDensity = 0.006;
-    float fogFactor = 1.0 - exp(-dist * fogDensity);
+    float fogDensity = mix(0.004, 0.002, isDay);
+    float fogFactor = 1.0 - exp(-dist * dist * fogDensity * fogDensity);
 
-    // Tint fog towards sun color when looking at the horizon
-    vec3 atmosphere = mix(FogColor.rgb, vec3(1.0, 0.8, 0.5), NdotL * 0.4);
+    vec3 atmosphere = mix(FogColor.rgb, skyDirect, NdotL * 0.4);
     finalColor = mix(finalColor, atmosphere, clamp(fogFactor, 0.0, 1.0));
 
-    // 7. Tonemapping & Saturation Boost
+    // Tonemapping & Saturation
     finalColor = ACESFilm(finalColor);
     float luminance = dot(finalColor, vec3(0.299, 0.587, 0.114));
-    finalColor = mix(vec3(luminance), finalColor, 1.35); // 35% Saturation boost
+    finalColor = mix(vec3(luminance), finalColor, 1.25);
 
     fragColor = vec4(finalColor, texColor.a * inColor.a);
 }

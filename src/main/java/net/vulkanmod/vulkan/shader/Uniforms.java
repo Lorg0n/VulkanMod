@@ -2,6 +2,7 @@ package net.vulkanmod.vulkan.shader;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
+import net.minecraft.client.Minecraft;
 import net.vulkanmod.vulkan.VRenderSystem;
 import net.vulkanmod.vulkan.shader.layout.Uniform;
 import net.vulkanmod.vulkan.util.MappedBuffer;
@@ -18,6 +19,8 @@ public class Uniforms {
     public static Object2ReferenceOpenHashMap<String, Supplier<MappedBuffer>> vec4f_uniformMap = new Object2ReferenceOpenHashMap<>();
 
     public static Object2ReferenceOpenHashMap<String, Supplier<MappedBuffer>> mat4f_uniformMap = new Object2ReferenceOpenHashMap<>();
+
+    public static MappedBuffer playerPos = new MappedBuffer(3 * 4);
 
     public static void setupDefaultUniforms() {
 
@@ -42,6 +45,11 @@ public class Uniforms {
         vec1f_uniformMap.put("LineWidth", RenderSystem::getShaderLineWidth);
         vec1f_uniformMap.put("AlphaCutout", () -> VRenderSystem.alphaCutout);
 
+        vec1f_uniformMap.put("SunAngle", () -> {
+            var level = Minecraft.getInstance().level;
+            return level != null ? level.getSunAngle(1.0f) : 0.0f;
+        });
+
         //Vec2
         vec2f_uniformMap.put("ScreenSize", VRenderSystem::getScreenSize);
 
@@ -51,7 +59,17 @@ public class Uniforms {
         vec3f_uniformMap.put("ModelOffset", () -> VRenderSystem.modelOffset);
         vec3f_uniformMap.put("ChunkOffset", () -> VRenderSystem.modelOffset);
 
-        //Vec4
+        vec3f_uniformMap.put("PlayerPos", () -> {
+            var player = Minecraft.getInstance().player;
+            var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+            if (player != null && camera.isInitialized()) {
+                playerPos.putFloat(0, (float) (player.getX() - camera.getPosition().x));
+                playerPos.putFloat(4, (float) (player.getY() - camera.getPosition().y));
+                playerPos.putFloat(8, (float) (player.getZ() - camera.getPosition().z));
+            }
+            return playerPos;
+        });
+
         vec4f_uniformMap.put("ColorModulator", VRenderSystem::getShaderColor);
         vec4f_uniformMap.put("FogColor", VRenderSystem::getShaderFogColor);
 
