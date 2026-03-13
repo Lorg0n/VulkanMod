@@ -22,6 +22,8 @@ layout(location = 4) in vec4 inLightSpacePos;
 
 layout(location = 0) out vec4 fragColor;
 
+const float PI = 3.14159265359;
+
 vec3 ACESFilm(vec3 x) {
     float a = 2.51; float b = 0.03; float c = 2.43;
     float d = 0.59; float e = 0.14;
@@ -91,7 +93,6 @@ void main() {
     float blockLight = inLightmap.x * inLightmap.x;
     float skyLight = inLightmap.y;
 
-    // FIX: SunAngle is already in Radians!
     float ang = SunAngle;
     vec3 sunDir = normalize(vec3(-sin(ang), cos(ang), 0.1));
     float isDay = smoothstep(-0.05, 0.05, sunDir.y);
@@ -131,9 +132,6 @@ void main() {
 
         finalColor *= vec3(0.3, 0.7, 0.9);
         albedo.a = mix(0.6, 0.9, fresnel);
-    } else if (AlphaCutout > 0.4) {
-        float sss = max(dot(lightDir, -normal), 0.0);
-        finalColor += albedo.rgb * directLightColor * sss * 0.4 * shadow * skyLight;
     }
 
     float dist = length(inWorldPos);

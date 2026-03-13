@@ -43,18 +43,13 @@ void main() {
     vec4 color = unpackUnorm4x8(PackedColor);
     vec2 texUV = UV0 * UV_INV;
 
-    bool isFoliage = (AlphaCutout > 0.4 && AlphaCutout < 0.6);
+    // Translucent pass has AlphaCutout = 0.0, water has alpha < 1.0
     bool isWater = (AlphaCutout < 0.05 && color.a < 0.95);
 
-    if (isFoliage || isWater) {
+    // Only apply vertex waving to water to prevent solid blocks from vibrating
+    if (isWater) {
         float wave = sin(pos.x * 2.0 + GameTime * 3.0) * cos(pos.z * 2.0 + GameTime * 2.0);
-        float magnitude = isWater ? 0.05 : 0.03;
-
-        float atten = isWater ? 1.0 : max(1.0 - texUV.y, 0.0);
-
-        pos.x += wave * magnitude * atten;
-        pos.z += wave * magnitude * atten;
-        if (isWater) pos.y += wave * 0.05;
+        pos.y += wave * 0.05;
     }
 
     gl_Position = MVP * vec4(pos, 1.0);
