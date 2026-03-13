@@ -117,8 +117,11 @@ public abstract class LevelRendererMixin {
     private void renderSectionLayer(ChunkSectionsToRender instance, ChunkSectionLayerGroup chunkSectionLayerGroup) {
         if (chunkSectionLayerGroup == ChunkSectionLayerGroup.OPAQUE) {
             Profiler profiler = Profiler.getMainProfiler();
-            profiler.push("Opaque_terrain");
+            profiler.push("Shadow_terrain");
+            this.worldRenderer.renderShadowPass(camX, camY, camZ);
+            profiler.pop();
 
+            profiler.push("Opaque_terrain");
             this.worldRenderer.renderSectionLayer(TerrainRenderType.SOLID, camX, camY, camZ, modelView, projection);
             this.worldRenderer.renderSectionLayer(TerrainRenderType.CUTOUT, camX, camY, camZ, modelView, projection);
             this.worldRenderer.renderSectionLayer(TerrainRenderType.CUTOUT_MIPPED, camX, camY, camZ, modelView, projection);
@@ -132,7 +135,6 @@ public abstract class LevelRendererMixin {
 
             profiler.pop();
         }
-
     }
 
     /**

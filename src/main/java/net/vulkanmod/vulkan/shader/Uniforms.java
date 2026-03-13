@@ -29,6 +29,7 @@ public class Uniforms {
         mat4f_uniformMap.put("ProjMat", VRenderSystem::getProjectionMatrix);
         mat4f_uniformMap.put("MVP", VRenderSystem::getMVP);
         mat4f_uniformMap.put("TextureMat", VRenderSystem::getTextureMatrix);
+        mat4f_uniformMap.put("LightSpaceMat", VRenderSystem::getLightSpaceMatrix);
 
         //Vec1i
         vec1i_uniformMap.put("EndPortalLayers", () -> 15);
@@ -49,6 +50,7 @@ public class Uniforms {
             var level = Minecraft.getInstance().level;
             return level != null ? level.getSunAngle(1.0f) : 0.0f;
         });
+        vec1f_uniformMap.put("GameTime", () -> (float) ((System.currentTimeMillis() % 100000L) / 1000.0f));
 
         //Vec2
         vec2f_uniformMap.put("ScreenSize", VRenderSystem::getScreenSize);

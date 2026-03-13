@@ -5,7 +5,6 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.vulkanmod.render.PipelineManager;
 import net.vulkanmod.render.shader.ShaderLoadUtil;
-import net.vulkanmod.render.vertex.CustomVertexFormat;
 import net.vulkanmod.vulkan.shader.GraphicsPipeline;
 import net.vulkanmod.vulkan.shader.Pipeline;
 
@@ -13,36 +12,31 @@ public class VibrantShaderPlugin implements ShaderPlugin {
     private static final ShaderPluginInfo INFO = new ShaderPluginInfo(
             "vulkanmod:vibrant",
             "Vibrant Visuals",
-            "1.0.0",
-            "A minimal vibrant shader with improved lighting and saturation.",
-            "YourName",
+            "2.0.0",
+            "A realistic shader with true shadows, PBR water, waving foliage and ACES Filmic tonemap.",
+            "Collateral",
             false
     );
 
     private GraphicsPipeline terrainShader;
     private GraphicsPipeline terrainShaderEarlyZ;
-    // We can reuse the default blit/clouds, or load custom ones
+    private GraphicsPipeline terrainShadow;
     private GraphicsPipeline cloudsPipeline;
 
     @Override
-    public ShaderPluginInfo getInfo() {
-        return INFO;
-    }
+    public ShaderPluginInfo getInfo() { return INFO; }
 
     @Override
     public void init() {
-        // Load custom vibrant terrain shaders
         this.terrainShader = createPipeline("terrain", PipelineManager.terrainVertexFormat, "vibrant");
         this.terrainShaderEarlyZ = createPipeline("terrain_earlyZ", PipelineManager.terrainVertexFormat, "vibrant");
-
-        // We can reuse the built-in clouds or make custom ones
+        this.terrainShadow = createPipeline("terrain_shadow", PipelineManager.terrainVertexFormat, "vibrant");
         this.cloudsPipeline = createPipeline("clouds", DefaultVertexFormat.POSITION_COLOR, "vibrant");
     }
 
     private GraphicsPipeline createPipeline(String configName, VertexFormat vertexFormat, String shaderDir) {
         Pipeline.Builder pipelineBuilder = new Pipeline.Builder(vertexFormat, configName);
 
-        // This will look in assets/vulkanmod/shaders/vibrant/
         final String path = ShaderLoadUtil.resolveShaderPath(shaderDir);
         JsonObject config = ShaderLoadUtil.getJsonConfig(path, configName);
         pipelineBuilder.parseBindings(config);
@@ -63,10 +57,10 @@ public class VibrantShaderPlugin implements ShaderPlugin {
     public GraphicsPipeline getTerrainEarlyZShader(String renderTypeName) { return terrainShaderEarlyZ; }
 
     @Override
-    public GraphicsPipeline getFastBlitPipeline() {
-        // Just reuse the built-in fast blit
-        return PipelineManager.getFastBlitPipeline();
-    }
+    public GraphicsPipeline getTerrainShadowShader() { return terrainShadow; }
+
+    @Override
+    public GraphicsPipeline getFastBlitPipeline() { return PipelineManager.getFastBlitPipeline(); }
 
     @Override
     public GraphicsPipeline getCloudsPipeline() { return cloudsPipeline; }
@@ -75,11 +69,10 @@ public class VibrantShaderPlugin implements ShaderPlugin {
     public void cleanup() {
         if (terrainShader != null) terrainShader.cleanUp();
         if (terrainShaderEarlyZ != null) terrainShaderEarlyZ.cleanUp();
+        if (terrainShadow != null) terrainShadow.cleanUp();
         if (cloudsPipeline != null) cloudsPipeline.cleanUp();
     }
 
     @Override
-    public boolean isAvailable() {
-        return true;
-    }
+    public boolean isAvailable() { return true; }
 }

@@ -27,6 +27,8 @@ public interface ShaderPlugin {
      */
     GraphicsPipeline getTerrainEarlyZShader(String renderTypeName);
 
+    GraphicsPipeline getTerrainShadowShader();
+
     /**
      * Get the fast blit pipeline
      */

@@ -19,6 +19,7 @@ import net.vulkanmod.vulkan.framebuffer.SwapChain;
 import net.vulkanmod.vulkan.memory.MemoryManager;
 import net.vulkanmod.vulkan.pass.DefaultMainPass;
 import net.vulkanmod.vulkan.pass.MainPass;
+import net.vulkanmod.vulkan.pass.ShadowPass;
 import net.vulkanmod.vulkan.queue.CommandPool;
 import net.vulkanmod.vulkan.shader.GraphicsPipeline;
 import net.vulkanmod.vulkan.shader.Pipeline;
@@ -103,6 +104,7 @@ public class Renderer {
     int recursion = 0;
 
     MainPass mainPass;
+    public ShadowPass shadowPass;
 
     private final List<Runnable> onResizeCallbacks = new ObjectArrayList<>();
 
@@ -124,6 +126,7 @@ public class Renderer {
 
         swapChain = new SwapChain();
         mainPass = DefaultMainPass.create();
+        shadowPass = new ShadowPass();
 
         drawer = new Drawer();
         drawer.createResources(framesNum);
@@ -197,8 +200,8 @@ public class Renderer {
             for (int i = 0; i < framesNum; i++) {
 
                 if (vkCreateSemaphore(device, semaphoreInfo, null, pImageAvailableSemaphore) != VK_SUCCESS
-                    || vkCreateSemaphore(device, semaphoreInfo, null, pRenderFinishedSemaphore) != VK_SUCCESS
-                    || vkCreateFence(device, fenceInfo, null, pFence) != VK_SUCCESS) {
+                        || vkCreateSemaphore(device, semaphoreInfo, null, pRenderFinishedSemaphore) != VK_SUCCESS
+                        || vkCreateFence(device, fenceInfo, null, pFence) != VK_SUCCESS) {
 
                     throw new RuntimeException("Failed to create synchronization objects for the frame: " + i);
                 }
@@ -218,8 +221,6 @@ public class Renderer {
         p.round();
         p.push("Frame_ops");
 
-        // runTick might be called recursively,
-        // this check forces sync to avoid upload corruption
         if (lastReset == currentFrame) {
             submitUploads();
             waitFences();
@@ -252,7 +253,6 @@ public class Renderer {
 
         this.recursion++;
 
-        // In case this is a recursive call end prev frame
         if (this.recursion > 1) {
             this.endFrame();
         }
@@ -280,7 +280,7 @@ public class Renderer {
             IntBuffer pImageIndex = stack.mallocInt(1);
 
             int vkResult = vkAcquireNextImageKHR(device, swapChain.getId(), VUtil.UINT64_MAX,
-                                                 imageAvailableSemaphores.get(currentFrame), VK_NULL_HANDLE, pImageIndex);
+                    imageAvailableSemaphores.get(currentFrame), VK_NULL_HANDLE, pImageIndex);
 
             if (vkResult == VK_SUBOPTIMAL_KHR || vkResult == VK_ERROR_OUT_OF_DATE_KHR || swapChainUpdate) {
                 swapChainUpdate = true;
@@ -360,7 +360,6 @@ public class Renderer {
             for (int i = 0; i < waitSemaphoreCount - 1; i++) {
                 waitDstStageMask.put(i, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
             }
-            // Image available semaphore mask
             waitDstStageMask.put(waitSemaphoreCount - 1, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
             submitInfo.pWaitSemaphores(waitSemaphores);
@@ -395,16 +394,12 @@ public class Renderer {
                 throw new RuntimeException("Failed to present rendered frame: %s".formatted(VkResult.decode(vkResult)));
             }
 
-            // Semaphore waited command buffers will be reset right after waiting this command buffer's fence
             Synchronization.INSTANCE.scheduleCbReset();
 
             currentFrame = (currentFrame + 1) % framesNum;
         }
     }
 
-    /**
-     * Called in case draw results are needed before the end of the frame
-     */
     public void flushCmds() {
         if (!this.recordingCmds)
             return;
@@ -470,13 +465,11 @@ public class Renderer {
     }
 
     public boolean beginRenderPass(RenderPass renderPass, Framebuffer framebuffer) {
-        // TODO: minimizing could trigger this preventing rendering (e.g. texture atlas uploads)
         if (skipRendering)
             return false;
 
         if (!recordingCmds) {
             this.beginFrame();
-
             recordingCmds = true;
         }
 
@@ -506,7 +499,6 @@ public class Renderer {
     }
 
     private void waitFences() {
-        // Make sure there are no uploads/transitions scheduled
         Synchronization.INSTANCE.waitFences();
         Vulkan.getStagingBuffer().reset();
     }
@@ -524,13 +516,11 @@ public class Renderer {
     void waitForSwapChain() {
         vkResetFences(device, inFlightFences.get(currentFrame));
 
-//        constexpr VkPipelineStageFlags t=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            //Empty Submit
             VkSubmitInfo info = VkSubmitInfo.calloc(stack)
-                                            .sType$Default()
-                                            .pWaitSemaphores(stack.longs(imageAvailableSemaphores.get(currentFrame)))
-                                            .pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
+                    .sType$Default()
+                    .pWaitSemaphores(stack.longs(imageAvailableSemaphores.get(currentFrame)))
+                    .pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT));
 
             vkQueueSubmit(DeviceManager.getGraphicsQueue().vkQueue(), info, inFlightFences.get(currentFrame));
             vkWaitForFences(device, inFlightFences.get(currentFrame), true, -1);
@@ -547,8 +537,6 @@ public class Renderer {
         recordingCmds = false;
 
         swapChain.recreate();
-
-        //Semaphores need to be recreated in order to make them unsignaled
         destroySyncObjects();
 
         int newFramesNum = Initializer.CONFIG.frameQueueSize;
@@ -713,13 +701,11 @@ public class Renderer {
             return;
 
         try (MemoryStack stack = stackPush()) {
-            //ClearValues have to be different for each attachment to clear,
-            //it seems it uses the same buffer: color and depth values override themselves
             VkClearValue colorValue = VkClearValue.calloc(stack);
             colorValue.color().float32(VRenderSystem.clearColor);
 
             VkClearValue depthValue = VkClearValue.calloc(stack);
-            depthValue.depthStencil().set(VRenderSystem.clearDepthValue, 0); //Use fast depth clears if possible
+            depthValue.depthStencil().set(VRenderSystem.clearDepthValue, 0);
 
             int attachmentsCount = attachments == (GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT) ? 2 : 1;
             final VkClearAttachment.Buffer pAttachments = VkClearAttachment.malloc(attachmentsCount, stack);
@@ -753,7 +739,6 @@ public class Renderer {
                 default -> throw new RuntimeException("unexpected value");
             }
 
-            //Rect to clear
             VkRect2D renderArea = VkRect2D.malloc(stack);
             renderArea.offset().set(x, y);
             renderArea.extent().set(width, height);

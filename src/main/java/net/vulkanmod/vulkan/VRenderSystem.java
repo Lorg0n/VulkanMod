@@ -46,6 +46,7 @@ public abstract class VRenderSystem {
     public static MappedBuffer projectionMatrix = new MappedBuffer(16 * 4);
     public static MappedBuffer TextureMatrix = new MappedBuffer(16 * 4);
     public static MappedBuffer MVP = new MappedBuffer(16 * 4);
+    public static MappedBuffer lightSpaceMatrix = new MappedBuffer(16 * 4);
 
     public static MappedBuffer modelOffset = new MappedBuffer(3 * 4);
     public static MappedBuffer lightDirection0 = new MappedBuffer(3 * 4);
@@ -65,8 +66,15 @@ public abstract class VRenderSystem {
 
     public static void initRenderer() {
         Vulkan.initVulkan(window);
-
         setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+
+    public static void applyLightSpaceMatrix(Matrix4f mat) {
+        mat.get(lightSpaceMatrix.buffer.asFloatBuffer());
+    }
+
+    public static MappedBuffer getLightSpaceMatrix() {
+        return lightSpaceMatrix;
     }
 
     public static MappedBuffer getScreenSize() {

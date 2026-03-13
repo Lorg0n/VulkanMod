@@ -18,8 +18,6 @@ import static org.lwjgl.vulkan.VK10.*;
 public class Framebuffer {
     public static final int DEFAULT_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
 
-//    private long id;
-
     protected int format;
     protected int depthFormat;
     protected int width, height;
@@ -93,6 +91,8 @@ public class Framebuffer {
                 attachments = stack.longs(colorAttachment.getImageView(), depthAttachment.getImageView());
             } else if (colorAttachment != null) {
                 attachments = stack.longs(colorAttachment.getImageView());
+            } else if (depthAttachment != null) {
+                attachments = stack.longs(depthAttachment.getImageView());
             } else {
                 throw new IllegalStateException();
             }
@@ -217,7 +217,6 @@ public class Framebuffer {
         VulkanImage colorAttachment;
         VulkanImage depthAttachment;
 
-//        int colorAttachments;
         boolean hasColorAttachment;
         boolean hasDepthAttachment;
 
@@ -247,11 +246,11 @@ public class Framebuffer {
             this.colorAttachment = colorAttachment;
             this.depthAttachment = depthAttachment;
 
-            this.format = colorAttachment.format;
+            this.format = colorAttachment != null ? colorAttachment.format : 0;
 
-            this.width = colorAttachment.width;
-            this.height = colorAttachment.height;
-            this.hasColorAttachment = true;
+            this.width = colorAttachment != null ? colorAttachment.width : (depthAttachment != null ? depthAttachment.width : 0);
+            this.height = colorAttachment != null ? colorAttachment.height : (depthAttachment != null ? depthAttachment.height : 0);
+            this.hasColorAttachment = colorAttachment != null;
             this.hasDepthAttachment = depthAttachment != null;
 
             this.depthFormat = this.hasDepthAttachment ? depthAttachment.format : 0;

@@ -309,6 +309,122 @@ public class WorldRenderer {
         this.onAllChangedCallbacks.clear();
     }
 
+    private static long lastLogTime = 0;
+
+    public void renderShadowPass(double camX, double camY, double camZ) {
+        net.vulkanmod.vulkan.pass.ShadowPass shadowPass = Renderer.getInstance().shadowPass;
+        if (shadowPass == null) return;
+
+        org.lwjgl.vulkan.VkCommandBuffer commandBuffer = Renderer.getCommandBuffer();
+
+        try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+            shadowPass.begin(commandBuffer, stack);
+        }
+
+        ClientLevel level = this.level;
+
+        // FIX: getSunAngle() is already in radians (0 to 2*PI). Do NOT multiply by 2*PI again!
+        float sunAngle = level.getSunAngle(1.0f);
+        float ang = sunAngle;
+
+        // CONSOLE OUT: Log the sun angle once per second
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastLogTime > 1000) {
+            Initializer.LOGGER.info("CURRENT SUN ANGLE (Radians): " + sunAngle);
+            lastLogTime = currentTime;
+        }
+
+        // Align shadow camera vector identically to the fragment shader
+        org.joml.Vector3f sunDir = new org.joml.Vector3f((float)-Math.sin(ang), (float)Math.cos(ang), 0.1f).normalize();
+
+        // Lock to moon if sun is below horizon
+        if (sunDir.y < 0) {
+            sunDir.mul(-1.0f);
+        }
+
+        org.joml.Matrix4f lightView = new org.joml.Matrix4f().lookAlong(sunDir, new org.joml.Vector3f(0, 1, 0));
+        org.joml.Vector3f lightSpaceCamPos = new org.joml.Vector3f((float)camX, (float)camY, (float)camZ).mulPosition(lightView);
+
+        float d = 64.0f;
+        float texelSize = (d * 2.0f) / net.vulkanmod.vulkan.pass.ShadowPass.SHADOW_MAP_SIZE;
+        lightSpaceCamPos.x = (float)Math.floor(lightSpaceCamPos.x / texelSize) * texelSize;
+        lightSpaceCamPos.y = (float)Math.floor(lightSpaceCamPos.y / texelSize) * texelSize;
+
+        lightView.identity().lookAlong(sunDir, new org.joml.Vector3f(0, 1, 0));
+
+        float l = -d + lightSpaceCamPos.x;
+        float r =  d + lightSpaceCamPos.x;
+        float b = -d + lightSpaceCamPos.y;
+        float t =  d + lightSpaceCamPos.y;
+        org.joml.Matrix4f lightProj = new org.joml.Matrix4f().ortho(l, r, b, t, -128.0f + lightSpaceCamPos.z, 128.0f + lightSpaceCamPos.z, true);
+        org.joml.Matrix4f lightSpaceMat = new org.joml.Matrix4f(lightProj).mul(lightView);
+
+        VRenderSystem.applyLightSpaceMatrix(lightSpaceMat);
+        VRenderSystem.applyMVP(lightView, lightProj);
+
+        GraphicsPipeline pipeline = net.vulkanmod.render.shader.plugin.ShaderPluginManager.getActivePlugin().getTerrainShadowShader();
+        if (pipeline == null) {
+            shadowPass.end(commandBuffer);
+            try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+                shadowPass.getShadowMap().transitionImageLayout(stack, commandBuffer, org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            }
+            return;
+        }
+
+        Renderer.getInstance().bindGraphicsPipeline(pipeline);
+
+        net.minecraft.client.renderer.texture.TextureManager textureManager = Minecraft.getInstance().getTextureManager();
+        net.minecraft.client.renderer.texture.AbstractTexture blockAtlasTexture = textureManager.getTexture(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS);
+        com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, blockAtlasTexture.getTextureView());
+        VTextureSelector.bindShaderTextures(pipeline);
+
+        net.vulkanmod.vulkan.memory.buffer.IndexBuffer indexBuffer = Renderer.getDrawer().getQuadsIndexBuffer().getIndexBuffer();
+        Renderer.getDrawer().bindIndexBuffer(commandBuffer, indexBuffer, indexBuffer.indexType.value);
+
+        int currentFrame = Renderer.getCurrentFrame();
+
+        VRenderSystem.enableCull();
+        VRenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthMask(true);
+        GlStateManager._colorMask(false, false, false, false);
+        VRenderSystem.setPolygonModeGL(org.lwjgl.opengl.GL11.GL_FILL);
+
+        Renderer.setDepthBias(1.25f, 1.75f);
+
+        for (TerrainRenderType renderType : new TerrainRenderType[]{TerrainRenderType.SOLID, TerrainRenderType.CUTOUT_MIPPED, TerrainRenderType.CUTOUT}) {
+            if (!Initializer.CONFIG.uniqueOpaqueLayer && renderType == TerrainRenderType.SOLID) continue;
+
+            renderType.setCutoutUniform();
+            for (java.util.Iterator<ChunkArea> iterator = this.sectionGraph.getChunkAreaQueue().iterator(false); iterator.hasNext(); ) {
+                ChunkArea chunkArea = iterator.next();
+                var queue = chunkArea.sectionQueue;
+                DrawBuffers drawBuffers = chunkArea.drawBuffers;
+
+                Renderer.getInstance().uploadAndBindUBOs(pipeline);
+                if (drawBuffers.getAreaBuffer(renderType) != null && queue.size() > 0) {
+                    drawBuffers.bindBuffers(commandBuffer, pipeline, renderType, camX, camY, camZ);
+                    Renderer.getInstance().uploadAndBindUBOs(pipeline);
+
+                    if (Initializer.CONFIG.indirectDraw)
+                        drawBuffers.buildDrawBatchesIndirect(this.cameraPos, this.indirectBuffers[currentFrame], queue, renderType);
+                    else
+                        drawBuffers.buildDrawBatchesDirect(this.cameraPos, queue, renderType);
+                }
+            }
+        }
+
+        Renderer.setDepthBias(0.0f, 0.0f);
+        shadowPass.end(commandBuffer);
+
+        try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+            shadowPass.getShadowMap().transitionImageLayout(stack, commandBuffer, org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
+
+        VTextureSelector.bindTexture(3, shadowPass.getShadowMap());
+    }
+
+
     public void renderSectionLayer(TerrainRenderType renderType, double camX, double camY, double camZ, Matrix4f modelView, Matrix4f projection) {
         Renderer.getInstance().getMainPass().rebindMainTarget();
 

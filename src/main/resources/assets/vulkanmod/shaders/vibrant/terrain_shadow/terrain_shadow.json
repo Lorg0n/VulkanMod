@@ -1,0 +1,18 @@
+{
+  "vertex": "terrain_shadow",
+  "fragment": "terrain_shadow",
+  "samplers":[
+    { "name": "Sampler0" }
+  ],
+  "UBOs":[
+    { "type":  "vertex", "binding": 0, "fields":[
+      { "name": "MVP", "type": "matrix4x4", "count": 16 }
+    ] },
+    { "type":  "fragment", "binding": 1, "fields":[
+      { "name": "AlphaCutout", "type": "float", "count": 1 }
+    ] }
+  ],
+  "PushConstants":[
+    { "name": "ModelOffset", "type": "float", "count": 3 }
+  ]
+}

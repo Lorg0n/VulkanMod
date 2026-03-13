@@ -2,13 +2,15 @@
     "vertex": "terrain",
     "fragment": "terrain",
     "samplers":[
-        { "name": "Sampler0" }
+        { "name": "Sampler0" },
+        { "name": "ShadowMap" }
     ],
     "UBOs":[
         { "type":  "vertex", "binding": 0, "fields":[
-            { "name": "MVP", "type": "matrix4x4", "count": 16 }
+            { "name": "MVP", "type": "matrix4x4", "count": 16 },
+            { "name": "LightSpaceMat", "type": "matrix4x4", "count": 16 }
         ] },
-        { "type":  "fragment", "binding": 1, "fields":[
+        { "type":  "all", "binding": 1, "fields":[
             { "name": "FogColor", "type": "float", "count": 4 },
             { "name": "FogEnvironmentalStart", "type": "float", "count": 1 },
             { "name": "FogEnvironmentalEnd", "type": "float", "count": 1 },
@@ -18,7 +20,8 @@
             { "name": "FogCloudsEnd", "type": "float", "count": 1 },
             { "name": "AlphaCutout", "type": "float", "count": 1 },
             { "name": "PlayerPos", "type": "float", "count": 3 },
-            { "name": "SunAngle", "type": "float", "count": 1 }
+            { "name": "SunAngle", "type": "float", "count": 1 },
+            { "name": "GameTime", "type": "float", "count": 1 }
         ] }
     ],
     "PushConstants":[

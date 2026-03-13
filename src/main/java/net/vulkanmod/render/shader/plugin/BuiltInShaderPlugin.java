@@ -34,6 +34,9 @@ public class BuiltInShaderPlugin implements ShaderPlugin {
     }
 
     @Override
+    public GraphicsPipeline getTerrainShadowShader() { return null; }
+
+    @Override
     public GraphicsPipeline getTerrainEarlyZShader(String renderTypeName) {
         return PipelineManager.getDefaultTerrainEarlyZShader();
     }

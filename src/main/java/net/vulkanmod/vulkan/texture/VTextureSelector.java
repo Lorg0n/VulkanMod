@@ -72,7 +72,7 @@ public abstract class VTextureSelector {
             case "Sampler0", "DiffuseSampler", "InSampler", "CloudFaces" -> 0;
             case "Sampler1", "BlurSampler" -> 1;
             case "Sampler2" -> 2;
-            case "Sampler3" -> 3;
+            case "Sampler3", "ShadowMap" -> 3;
             case "Sampler4" -> 4;
             case "Sampler5" -> 5;
             case "Sampler6" -> 6;
