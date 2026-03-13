@@ -150,17 +150,17 @@ public class MemoryManager {
         }
     }
 
-    public void createImage(int width, int height, int arrayLayers, int mipLevels,
+    public void createImage(int width, int height, int depth, int arrayLayers, int mipLevels,
                             int format, int tiling, int usage, int flags,
                             int memProperties,
                             LongBuffer pTextureImage, PointerBuffer pTextureImageMemory) {
         try (MemoryStack stack = stackPush()) {
             VkImageCreateInfo imageInfo = VkImageCreateInfo.calloc(stack);
             imageInfo.sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
-            imageInfo.imageType(VK_IMAGE_TYPE_2D);
+            imageInfo.imageType(depth > 1 ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D);
             imageInfo.extent().width(width);
             imageInfo.extent().height(height);
-            imageInfo.extent().depth(1);
+            imageInfo.extent().depth(depth);
             imageInfo.mipLevels(mipLevels);
             imageInfo.arrayLayers(arrayLayers);
             imageInfo.format(format);
@@ -169,7 +169,6 @@ public class MemoryManager {
             imageInfo.usage(usage);
             imageInfo.samples(VK_SAMPLE_COUNT_1_BIT);
             imageInfo.flags(flags);
-//            imageInfo.sharingMode(VK_SHARING_MODE_CONCURRENT);
             imageInfo.pQueueFamilyIndices(
                     stack.ints(Queue.getQueueFamilies().graphicsFamily, Queue.getQueueFamilies().computeFamily));
 
@@ -178,11 +177,9 @@ public class MemoryManager {
 
             int result = vmaCreateImage(ALLOCATOR, imageInfo, allocationInfo, pTextureImage, pTextureImageMemory, null);
             if (result != VK_SUCCESS) {
-                Initializer.LOGGER.info(String.format("Failed to create image with size: %dx%d", width, height));
-
+                Initializer.LOGGER.info(String.format("Failed to create image with size: %dx%dx%d", width, height, depth));
                 throw new RuntimeException("Failed to create image: %s".formatted(VkResult.decode(result)));
             }
-
         }
     }
 

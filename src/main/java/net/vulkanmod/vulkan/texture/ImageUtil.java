@@ -21,6 +21,13 @@ public abstract class ImageUtil {
                                             long image, int arrayLayer,
                                             int mipLevel, int width, int height, int xOffset, int yOffset,
                                             int bufferOffset, int bufferRowLenght, int bufferImageHeight) {
+        copyBufferToImage3DCmd(stack, commandBuffer, buffer, image, arrayLayer, mipLevel, width, height, 1, xOffset, yOffset, 0, bufferOffset, bufferRowLenght, bufferImageHeight);
+    }
+
+    public static void copyBufferToImage3DCmd(MemoryStack stack, VkCommandBuffer commandBuffer, long buffer,
+                                              long image, int arrayLayer,
+                                              int mipLevel, int width, int height, int depth, int xOffset, int yOffset, int zOffset,
+                                              int bufferOffset, int bufferRowLenght, int bufferImageHeight) {
         VkBufferImageCopy.Buffer region = VkBufferImageCopy.calloc(1, stack);
         region.bufferOffset(bufferOffset);
         region.bufferRowLength(bufferRowLenght);
@@ -29,8 +36,8 @@ public abstract class ImageUtil {
         region.imageSubresource().mipLevel(mipLevel);
         region.imageSubresource().baseArrayLayer(arrayLayer);
         region.imageSubresource().layerCount(1);
-        region.imageOffset().set(xOffset, yOffset, 0);
-        region.imageExtent(VkExtent3D.calloc(stack).set(width, height, 1));
+        region.imageOffset().set(xOffset, yOffset, zOffset);
+        region.imageExtent(VkExtent3D.calloc(stack).set(width, height, depth));
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region);
     }

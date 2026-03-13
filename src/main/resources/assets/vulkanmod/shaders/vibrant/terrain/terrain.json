@@ -3,7 +3,8 @@
     "fragment": "terrain",
     "samplers":[
         { "name": "Sampler0" },
-        { "name": "ShadowMap" }
+        { "name": "ShadowMap" },
+        { "name": "Sampler4" }
     ],
     "UBOs":[
         { "type":  "vertex", "binding": 0, "fields":[

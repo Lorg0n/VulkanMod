@@ -23,6 +23,7 @@ public class CompileResult {
     VisibilitySet visibilitySet;
     QuadSorter.SortState transparencyState;
     CompiledSection compiledSection;
+    byte[] voxelData;
 
     CompileResult(RenderSection renderSection, boolean fullUpdate) {
         this.renderSection = renderSection;

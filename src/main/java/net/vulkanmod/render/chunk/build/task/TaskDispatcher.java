@@ -179,6 +179,11 @@ public class TaskDispatcher {
             }
 
             compileResult.updateSection();
+            if (compileResult.voxelData != null) {
+                net.vulkanmod.render.chunk.VoxelVolume.updateRegion(
+                        section.xOffset() >> 4, section.yOffset() >> 4, section.zOffset() >> 4, compileResult.voxelData
+                );
+            }
         }
         else {
             UploadBuffer uploadBuffer = compileResult.renderedLayers.get(TerrainRenderType.TRANSLUCENT);

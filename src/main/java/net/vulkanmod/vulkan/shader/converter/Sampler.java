@@ -21,7 +21,8 @@ public class Sampler {
     public enum Type {
         SAMPLER_2D("sampler2D"),
         SAMPLER_CUBE("samplerCube"),
-        I_SAMPLER_BUFFER("isamplerBuffer");
+        I_SAMPLER_BUFFER("isamplerBuffer"),
+        SAMPLER_3D("sampler3D");
 
         public final String name;
 

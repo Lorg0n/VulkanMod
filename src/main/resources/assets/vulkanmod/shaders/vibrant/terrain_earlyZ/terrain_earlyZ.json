@@ -1,7 +1,7 @@
 {
     "vertex": "terrain",
     "fragment": "terrain_earlyZ",
-    "samplers":[ { "name": "Sampler0" }, { "name": "ShadowMap" } ],
+    "samplers":[ { "name": "Sampler0" }, { "name": "ShadowMap" }, { "name": "Sampler4" } ],
     "UBOs":[
         { "type":  "vertex", "binding": 0, "fields":[ { "name": "MVP", "type": "matrix4x4", "count": 16 }, { "name": "LightSpaceMat", "type": "matrix4x4", "count": 16 } ] },
         { "type":  "all", "binding": 1, "fields":[

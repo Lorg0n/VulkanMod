@@ -31,6 +31,7 @@ public class VulkanImage {
     public final int mipLevels;
     public final int width;
     public final int height;
+    public final int depth;
     public final int formatSize;
     public final int usage;
     public final int viewType;
@@ -46,7 +47,6 @@ public class VulkanImage {
 
     private int currentLayout;
 
-    // Used for already allocated images e.g. swap chain images
     public VulkanImage(String name, long id, int format, int mipLevels, int width, int height, int formatSize, int usage, long imageView) {
         this.id = id;
         this.mainImageView = imageView;
@@ -56,6 +56,7 @@ public class VulkanImage {
         this.mipLevels = mipLevels;
         this.width = width;
         this.height = height;
+        this.depth = 1;
         this.formatSize = formatSize;
         this.format = format;
         this.usage = usage;
@@ -73,6 +74,7 @@ public class VulkanImage {
         this.mipLevels = builder.mipLevels;
         this.width = builder.width;
         this.height = builder.height;
+        this.depth = builder.depth;
         this.arrayLayers = builder.arrayLayers;
         this.formatSize = builder.formatSize;
         this.format = builder.format;
@@ -80,30 +82,25 @@ public class VulkanImage {
         this.aspect = getAspect(this.format);
         this.viewType = builder.viewType;
 
-        this.size = width * height * formatSize;
+        this.size = width * height * depth * formatSize;
         this.levelImageViews = new long[builder.mipLevels];
     }
 
     public static VulkanImage createTextureImage(Builder builder) {
         VulkanImage image = new VulkanImage(builder);
-
         image.createImage();
         image.mainImageView = createImageView(image.id, image.viewType, image.format, image.aspect, image.arrayLayers, 0, image.mipLevels);
-
         image.sampler = SamplerManager.getSampler(builder.clamp, builder.linearFiltering, builder.mipLevels - 1);
-
         return image;
     }
 
     public static VulkanImage createDepthImage(int format, int width, int height, int usage, boolean blur, boolean clamp) {
-        VulkanImage image = VulkanImage.builder(width, height)
-                                       .setFormat(format)
-                                       .setUsage(usage)
-                                       .setLinearFiltering(blur)
-                                       .setClamp(clamp)
-                                       .createVulkanImage();
-
-        return image;
+        return VulkanImage.builder(width, height)
+                .setFormat(format)
+                .setUsage(usage)
+                .setLinearFiltering(blur)
+                .setClamp(clamp)
+                .createVulkanImage();
     }
 
     public static VulkanImage createWhiteTexture() {
@@ -113,11 +110,11 @@ public class VulkanImage {
             buffer.putInt(0, i);
 
             VulkanImage image = VulkanImage.builder(1, 1)
-                                           .setFormat(DefaultFormat)
-                                           .setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
-                                           .setLinearFiltering(false)
-                                           .setClamp(false)
-                                           .createVulkanImage();
+                    .setFormat(DefaultFormat)
+                    .setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
+                    .setLinearFiltering(false)
+                    .setClamp(false)
+                    .createVulkanImage();
             image.uploadSubTextureAsync(0, 0, image.width, image.height, 0, 0, 0, 0, 0, buffer);
             return image;
         }
@@ -131,12 +128,12 @@ public class VulkanImage {
             int flags = viewType == VK_IMAGE_VIEW_TYPE_CUBE ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
 
             MemoryManager.getInstance()
-                         .createImage(width, height, arrayLayers, mipLevels,
-                                      format, VK_IMAGE_TILING_OPTIMAL,
-                                      usage, flags,
-                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                      pTextureImage,
-                                      pAllocation);
+                    .createImage(width, height, depth, arrayLayers, mipLevels,
+                            format, VK_IMAGE_TILING_OPTIMAL,
+                            usage, flags,
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                            pTextureImage,
+                            pAllocation);
 
             id = pTextureImage.get(0);
             allocation = pAllocation.get(0);
@@ -151,12 +148,8 @@ public class VulkanImage {
 
     public static int getAspect(int format) {
         return switch (format) {
-            case VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT ->
-                    VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-
-            case VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D32_SFLOAT,
-                 VK_FORMAT_D16_UNORM -> VK_IMAGE_ASPECT_DEPTH_BIT;
-
+            case VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT -> VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            case VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D16_UNORM -> VK_IMAGE_ASPECT_DEPTH_BIT;
             default -> VK_IMAGE_ASPECT_COLOR_BIT;
         };
     }
@@ -197,42 +190,23 @@ public class VulkanImage {
         }
     }
 
-    public void uploadSubTextureAsync(int mipLevel,
-                                      int width, int height,
-                                      int xOffset, int yOffset,
-                                      int unpackSkipRows, int unpackSkipPixels, int unpackRowLength,
-                                      ByteBuffer buffer)
-    {
-        this.uploadSubTextureAsync(mipLevel, 0, width, height,
-                                   xOffset, yOffset,
-                                   unpackSkipRows, unpackSkipPixels, unpackRowLength,
-                                   MemoryUtil.memAddress(buffer));
+    public void uploadSubTextureAsync(int mipLevel, int width, int height, int xOffset, int yOffset, int unpackSkipRows, int unpackSkipPixels, int unpackRowLength, ByteBuffer buffer) {
+        this.uploadSubTextureAsync(mipLevel, 0, width, height, xOffset, yOffset, unpackSkipRows, unpackSkipPixels, unpackRowLength, MemoryUtil.memAddress(buffer));
     }
 
-    public void uploadSubTextureAsync(int mipLevel, int arrayLayer,
-                                      int width, int height,
-                                      int xOffset, int yOffset,
-                                      int unpackSkipRows, int unpackSkipPixels, int unpackRowLength,
-                                      ByteBuffer buffer)
-    {
-        this.uploadSubTextureAsync(mipLevel, arrayLayer, width, height,
-                                   xOffset, yOffset,
-                                   unpackSkipRows, unpackSkipPixels, unpackRowLength,
-                                   MemoryUtil.memAddress(buffer));
+    public void uploadSubTextureAsync(int mipLevel, int arrayLayer, int width, int height, int xOffset, int yOffset, int unpackSkipRows, int unpackSkipPixels, int unpackRowLength, ByteBuffer buffer) {
+        this.uploadSubTextureAsync(mipLevel, arrayLayer, width, height, xOffset, yOffset, unpackSkipRows, unpackSkipPixels, unpackRowLength, MemoryUtil.memAddress(buffer));
     }
 
-    public void uploadSubTextureAsync(int mipLevel, int arrayLayer,
-                                      int width, int height,
-                                      int xOffset, int yOffset,
-                                      int unpackSkipRows, int unpackSkipPixels, int unpackRowLength,
-                                      long srcPtr)
-    {
-        long uploadSize = (long) (unpackRowLength * height - unpackSkipPixels) * this.formatSize;
+    public void uploadSubTextureAsync(int mipLevel, int arrayLayer, int width, int height, int xOffset, int yOffset, int unpackSkipRows, int unpackSkipPixels, int unpackRowLength, long srcPtr) {
+        uploadSubTexture3DAsync(mipLevel, arrayLayer, width, height, 1, xOffset, yOffset, 0, unpackSkipRows, unpackSkipPixels, unpackRowLength, srcPtr);
+    }
+
+    public void uploadSubTexture3DAsync(int mipLevel, int arrayLayer, int width, int height, int depth, int xOffset, int yOffset, int zOffset, int unpackSkipRows, int unpackSkipPixels, int unpackRowLength, long srcPtr) {
+        long uploadSize = (long) (unpackRowLength * height * depth - unpackSkipPixels) * this.formatSize;
 
         StagingBuffer stagingBuffer = Vulkan.getStagingBuffer();
 
-        // Use a temporary staging buffer if the upload size is greater than
-        // the default staging buffer
         if (uploadSize > stagingBuffer.getBufferSize()) {
             stagingBuffer = new StagingBuffer(uploadSize);
             stagingBuffer.scheduleFree();
@@ -248,12 +222,10 @@ public class VulkanImage {
         VkCommandBuffer commandBuffer = ImageUploadHelper.INSTANCE.getOrStartCommandBuffer().getHandle();
         try (MemoryStack stack = stackPush()) {
             transferDstLayout(stack, commandBuffer);
-
             final int srcOffset = (int) (stagingBuffer.getOffset());
-
-            ImageUtil.copyBufferToImageCmd(stack, commandBuffer, bufferId, this.id,
-                                           arrayLayer, mipLevel, width, height, xOffset, yOffset,
-                                           srcOffset, unpackRowLength, height);
+            ImageUtil.copyBufferToImage3DCmd(stack, commandBuffer, bufferId, this.id,
+                    arrayLayer, mipLevel, width, height, depth, xOffset, yOffset, zOffset,
+                    srcOffset, unpackRowLength, height);
         }
     }
 
@@ -262,17 +234,13 @@ public class VulkanImage {
     }
 
     public void readOnlyLayout() {
-        if (this.currentLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-            return;
-
+        if (this.currentLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) return;
         try (MemoryStack stack = MemoryStack.stackPush()) {
             if (Renderer.getInstance().getBoundRenderPass() != null) {
                 CommandPool.CommandBuffer commandBuffer = ImageUploadHelper.INSTANCE.getOrStartCommandBuffer();
                 VkCommandBuffer vkCommandBuffer = commandBuffer.getHandle();
-
                 readOnlyLayout(stack, vkCommandBuffer);
-            }
-            else {
+            } else {
                 readOnlyLayout(stack, Renderer.getCommandBuffer());
             }
         }
@@ -291,9 +259,7 @@ public class VulkanImage {
     }
 
     public static void transitionImageLayout(MemoryStack stack, VkCommandBuffer commandBuffer, VulkanImage image, int newLayout) {
-        if (image.currentLayout == newLayout) {
-            return;
-        }
+        if (image.currentLayout == newLayout) return;
 
         int sourceStage, srcAccessMask, destinationStage, dstAccessMask = 0;
 
@@ -353,18 +319,14 @@ public class VulkanImage {
         }
 
         transitionLayout(stack, commandBuffer, image, image.currentLayout, newLayout,
-                         sourceStage, srcAccessMask, destinationStage, dstAccessMask);
+                sourceStage, srcAccessMask, destinationStage, dstAccessMask);
     }
 
-    public static void transitionLayout(MemoryStack stack, VkCommandBuffer commandBuffer, VulkanImage image, int oldLayout, int newLayout,
-                                        int sourceStage, int srcAccessMask, int destinationStage, int dstAccessMask) {
-        transitionLayout(stack, commandBuffer, image, 0, oldLayout, newLayout,
-                         sourceStage, srcAccessMask, destinationStage, dstAccessMask);
+    public static void transitionLayout(MemoryStack stack, VkCommandBuffer commandBuffer, VulkanImage image, int oldLayout, int newLayout, int sourceStage, int srcAccessMask, int destinationStage, int dstAccessMask) {
+        transitionLayout(stack, commandBuffer, image, 0, oldLayout, newLayout, sourceStage, srcAccessMask, destinationStage, dstAccessMask);
     }
 
-    public static void transitionLayout(MemoryStack stack, VkCommandBuffer commandBuffer, VulkanImage image, int baseLevel, int oldLayout, int newLayout,
-                                        int sourceStage, int srcAccessMask, int destinationStage, int dstAccessMask) {
-
+    public static void transitionLayout(MemoryStack stack, VkCommandBuffer commandBuffer, VulkanImage image, int baseLevel, int oldLayout, int newLayout, int sourceStage, int srcAccessMask, int destinationStage, int dstAccessMask) {
         VkImageMemoryBarrier.Buffer barrier = VkImageMemoryBarrier.calloc(1, stack);
         barrier.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER);
         barrier.oldLayout(image.currentLayout);
@@ -377,24 +339,13 @@ public class VulkanImage {
         barrier.subresourceRange().levelCount(VK_REMAINING_MIP_LEVELS);
         barrier.subresourceRange().baseArrayLayer(0);
         barrier.subresourceRange().layerCount(VK_REMAINING_ARRAY_LAYERS);
-
         barrier.subresourceRange().aspectMask(image.aspect);
 
         barrier.srcAccessMask(srcAccessMask);
         barrier.dstAccessMask(dstAccessMask);
 
-        vkCmdPipelineBarrier(commandBuffer,
-                             sourceStage, destinationStage,
-                             0,
-                             null,
-                             null,
-                             barrier);
-
+        vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, null, null, barrier);
         image.currentLayout = newLayout;
-    }
-
-    private static boolean hasStencilComponent(int format) {
-        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
     public void free() {
@@ -402,20 +353,15 @@ public class VulkanImage {
     }
 
     public void doFree() {
-        if (this.id == 0L)
-            return;
+        if (this.id == 0L) return;
 
         MemoryManager.freeImage(this.id, this.allocation);
-
         vkDestroyImageView(Vulkan.getVkDevice(), this.mainImageView, null);
 
         if (this.levelImageViews != null)
-            Arrays.stream(this.levelImageViews).forEach(
-                    imageView -> {
-                        if (imageView != 0L) {
-                            vkDestroyImageView(Vulkan.getVkDevice(), imageView, null);
-                        }
-                    });
+            Arrays.stream(this.levelImageViews).forEach(imageView -> {
+                if (imageView != 0L) vkDestroyImageView(Vulkan.getVkDevice(), imageView, null);
+            });
 
         this.id = 0L;
     }
@@ -462,6 +408,7 @@ public class VulkanImage {
     public static class Builder {
         final int width;
         final int height;
+        int depth = 1;
 
         String name;
         int format = VulkanImage.DefaultFormat;
@@ -471,7 +418,6 @@ public class VulkanImage {
         int usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         int viewType = VK_IMAGE_VIEW_TYPE_2D;
 
-        // Sampler settings
         boolean linearFiltering = false;
         boolean clamp = false;
         int reductionMode = -1;
@@ -516,6 +462,14 @@ public class VulkanImage {
             return this;
         }
 
+        public Builder setDepth(int depth) {
+            this.depth = depth;
+            if (depth > 1) {
+                this.viewType = VK_IMAGE_VIEW_TYPE_3D;
+            }
+            return this;
+        }
+
         public Builder setLinearFiltering(boolean b) {
             this.linearFiltering = b;
             return this;
@@ -533,7 +487,6 @@ public class VulkanImage {
 
         public VulkanImage createVulkanImage() {
             this.formatSize = formatSize(this.format);
-
             return VulkanImage.createTextureImage(this);
         }
 
@@ -546,7 +499,6 @@ public class VulkanImage {
                 case VK_FORMAT_R16_SFLOAT -> 2;
                 case VK_FORMAT_R8_UNORM -> 1;
                 case VK_FORMAT_R16G16B16A16_SFLOAT -> 8;
-
                 default -> throw new IllegalArgumentException(String.format("Unxepcted format: %s", format));
             };
         }

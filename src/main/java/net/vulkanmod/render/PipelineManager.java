@@ -41,6 +41,7 @@ public abstract class PipelineManager {
         });
 
         ThreadBuilderPack.defaultTerrainBuilderConstructor();
+        net.vulkanmod.render.chunk.VoxelVolume.init();
     }
 
     private static void createBasicPipelines() {

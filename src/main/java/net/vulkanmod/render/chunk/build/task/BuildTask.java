@@ -94,10 +94,10 @@ public class BuildTask extends ChunkTask {
         builderResources.update(this.region, this.section);
 
         BlockRenderer blockRenderer = builderResources.blockRenderer;
-
         FluidRenderer fluidRenderer = builderResources.fluidRenderer;
 
         BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos();
+        byte[] voxelData = new byte[16 * 16 * 16];
 
         for (int y = 0; y < 16; ++y) {
             for (int z = 0; z < 16; ++z) {
@@ -107,6 +107,13 @@ public class BuildTask extends ChunkTask {
                     BlockState blockState = this.region.getBlockState(blockPos);
                     if (blockState.isSolidRender()) {
                         visGraph.setOpaque(blockPos);
+                    }
+
+                    // FIXED: Vulkan 3D memory layout expects X, then Y, then Z.
+                    if (blockState.canOcclude() || blockState.isSolidRender()) {
+                        voxelData[x + y * 16 + z * 256] = (byte) 255;
+                    } else if (blockState.getLightEmission() > 0) {
+                        voxelData[x + y * 16 + z * 256] = (byte) 128;
                     }
 
                     if (blockState.hasBlockEntity()) {
@@ -149,6 +156,7 @@ public class BuildTask extends ChunkTask {
 
         compileResult.visibilitySet = visGraph.resolve();
         this.region = null;
+        compileResult.voxelData = voxelData;
         return compileResult;
     }
 
@@ -189,6 +197,5 @@ public class BuildTask extends ChunkTask {
                 compileResult.globalBlockEntities.add(blockEntity);
             }
         }
-
     }
 }

@@ -107,10 +107,10 @@ public class GLSLParser {
             case "sampler2D" -> parseSampler(Sampler.Type.SAMPLER_2D);
             case "samplerCube" -> parseSampler(Sampler.Type.SAMPLER_CUBE);
             case "isamplerBuffer" -> parseSampler(Sampler.Type.I_SAMPLER_BUFFER);
+            case "sampler3D" -> parseSampler(Sampler.Type.SAMPLER_3D);
 
             default -> throw new IllegalStateException("Unrecognized value: %s".formatted(currentToken.value));
         }
-        // TODO: parse uniform
     }
 
     private void parseSampler(Sampler.Type type) {
@@ -436,7 +436,7 @@ public class GLSLParser {
                 builder.addUniformInfo(uniformInfo);
             }
 
-             ubos[i] = builder.buildUBO(uniformBlock.name, uniformBlock.binding, VK11.VK_SHADER_STAGE_ALL);
+            ubos[i] = builder.buildUBO(uniformBlock.name, uniformBlock.binding, VK11.VK_SHADER_STAGE_ALL);
             ++i;
         }
 
@@ -450,7 +450,7 @@ public class GLSLParser {
         for (Sampler sampler : this.samplers) {
 
             int descriptorType = switch (sampler.type) {
-                case SAMPLER_2D, SAMPLER_CUBE -> VK11.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                case SAMPLER_2D, SAMPLER_CUBE, SAMPLER_3D -> VK11.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 case I_SAMPLER_BUFFER -> VK11.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
             };
 
@@ -488,5 +488,3 @@ public class GLSLParser {
         }
     }
 }
-
-

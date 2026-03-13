@@ -2,6 +2,7 @@
 
 layout(binding = 2) uniform sampler2D Sampler0;
 layout(binding = 3) uniform sampler2D ShadowMap;
+layout(binding = 4) uniform sampler3D Sampler4;
 
 layout(binding = 1) uniform UBO {
     vec4 FogColor;
@@ -44,6 +45,63 @@ float fbm(vec2 p) {
     mat2 rot = mat2(0.866, 0.5, -0.5, 0.866);
     for (int i = 0; i < 3; ++i) { v += a * noise(p); p = rot * p * 2.0; a *= 0.5; }
     return v;
+}
+
+// Smooth Soft Shadow for the Sun (reaches 64+ blocks)
+float VoxelSunShadow(vec3 startPos, vec3 lightDir, vec3 normal) {
+    vec3 pos = startPos + normal * 0.1;
+    float visibility = 1.0;
+    float t = 0.2;
+    float stepSize = 0.4;
+
+    for(int i = 0; i < 60; i++) {
+        if(t > 64.0) break;
+
+        vec3 p = pos + lightDir * t;
+        float v = texture(Sampler4, fract(p / 256.0)).r;
+
+        if(v > 0.8) {
+            visibility -= 0.6;
+            if(visibility <= 0.0) return 0.0;
+        }
+
+        t += stepSize;
+        stepSize *= 1.03;
+    }
+    return max(visibility, 0.0);
+}
+
+// Deterministic Voxel Ambient Occlusion for localized contact shadows (Torches/Corners)
+float VoxelAO(vec3 startPos, vec3 normal) {
+    float ao = 0.0;
+
+    vec3 t = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    if (length(t) < 0.1) t = normalize(cross(normal, vec3(1.0, 0.0, 0.0)));
+    vec3 b = cross(normal, t);
+
+    vec3 dirs[5] = vec3[](
+        normal,
+        normalize(normal + t),
+        normalize(normal - t),
+        normalize(normal + b),
+        normalize(normal - b)
+    );
+
+    for(int d = 0; d < 5; d++) {
+        vec3 rayDir = dirs[d];
+        float rayAO = 0.0;
+
+        for(int i = 1; i <= 3; i++) {
+            float dist = float(i) * 0.7;
+            vec3 p = startPos + normal * 0.1 + rayDir * dist;
+            float v = texture(Sampler4, fract(p / 256.0)).r;
+            if(v > 0.8) {
+                rayAO += 1.0 / float(i);
+            }
+        }
+        ao += rayAO;
+    }
+    return clamp(1.0 - ao * 0.15, 0.0, 1.0);
 }
 
 float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) {
@@ -101,17 +159,24 @@ void main() {
     float NdotL = max(dot(normal, lightDir), 0.0);
 
     vec3 sunColor = mix(vec3(1.0, 0.4, 0.1), vec3(1.0, 0.9, 0.8), smoothstep(0.0, 0.3, sunDir.y));
-    vec3 moonColor = vec3(0.05, 0.1, 0.2);
-    vec3 directLightColor = mix(moonColor, sunColor, isDay) * 2.0;
+    vec3 moonColor = vec3(0.01, 0.02, 0.05); // Much darker nights
+    vec3 directLightColor = mix(moonColor, sunColor, isDay);
 
-    vec3 skyAmbient = mix(vec3(0.02, 0.04, 0.08), vec3(0.2, 0.35, 0.5), isDay);
+    vec3 skyAmbient = mix(vec3(0.005, 0.01, 0.02), vec3(0.15, 0.25, 0.4), isDay); // Darker night ambient
     vec3 torchColor = vec3(1.0, 0.6, 0.2) * 1.5;
 
     float shadow = ShadowCalculation(inLightSpacePos, normal, lightDir);
+    float rtxSunShadow = VoxelSunShadow(inWorldPos + PlayerPos, lightDir, normal);
+
+    // Smoothly blend RTX shadow back to the vanilla shadow map in the distance
+    shadow = min(shadow, mix(rtxSunShadow, 1.0, smoothstep(48.0, 64.0, length(inWorldPos))));
     shadow = min(shadow, smoothstep(0.5, 0.95, skyLight));
 
-    vec3 lighting = blockLight * torchColor;
-    lighting += skyAmbient * max(skyLight, 0.1);
+    // Calculate our high quality deterministic Voxel AO for contact shadows
+    float vxAO = VoxelAO(inWorldPos + PlayerPos, normal);
+
+    vec3 lighting = blockLight * torchColor * mix(0.5, 1.0, vxAO);
+    lighting += skyAmbient * max(skyLight, 0.05) * vxAO;
     lighting += NdotL * directLightColor * shadow;
     lighting = max(lighting, vec3(0.01));
 

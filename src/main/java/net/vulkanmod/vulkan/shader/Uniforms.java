@@ -62,12 +62,11 @@ public class Uniforms {
         vec3f_uniformMap.put("ChunkOffset", () -> VRenderSystem.modelOffset);
 
         vec3f_uniformMap.put("PlayerPos", () -> {
-            var player = Minecraft.getInstance().player;
             var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-            if (player != null && camera.isInitialized()) {
-                playerPos.putFloat(0, (float) (player.getX() - camera.getPosition().x));
-                playerPos.putFloat(4, (float) (player.getY() - camera.getPosition().y));
-                playerPos.putFloat(8, (float) (player.getZ() - camera.getPosition().z));
+            if (camera.isInitialized()) {
+                playerPos.putFloat(0, (float) camera.getPosition().x);
+                playerPos.putFloat(4, (float) camera.getPosition().y);
+                playerPos.putFloat(8, (float) camera.getPosition().z);
             }
             return playerPos;
         });
