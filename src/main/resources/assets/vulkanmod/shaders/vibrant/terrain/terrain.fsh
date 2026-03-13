@@ -206,10 +206,12 @@ void main() {
     float NdotL = max(dot(normal, lightDir), 0.0);
 
     vec3 sunColor = mix(vec3(1.0, 0.4, 0.1), vec3(1.0, 0.9, 0.8), smoothstep(0.0, 0.3, sunDir.y));
-    vec3 moonColor = vec3(0.01, 0.02, 0.05); // Much darker nights
+    // FIXED: Brighter, more visible blue moonlight
+    vec3 moonColor = vec3(0.08, 0.15, 0.25);
     vec3 directLightColor = mix(moonColor, sunColor, isDay);
 
-    vec3 skyAmbient = mix(vec3(0.005, 0.01, 0.02), vec3(0.15, 0.25, 0.4), isDay); // Darker night ambient
+    // FIXED: Brighter night ambient light so shadows aren't pitch black
+    vec3 skyAmbient = mix(vec3(0.04, 0.07, 0.12), vec3(0.15, 0.25, 0.4), isDay);
     vec3 torchColor = vec3(1.0, 0.6, 0.2) * 1.5;
 
     float shadow = ShadowCalculation(inLightSpacePos, normal, lightDir);
@@ -223,7 +225,8 @@ void main() {
     float vxAO = VoxelAO(inWorldPos + PlayerPos, normal);
 
     vec3 lighting = blockLight * torchColor * mix(0.5, 1.0, vxAO);
-    lighting += skyAmbient * max(skyLight, 0.05) * vxAO;
+    // FIXED: Raised minimum skylight factor from 0.05 to 0.1 so ambient is stronger
+    lighting += skyAmbient * max(skyLight, 0.1) * vxAO;
     lighting += NdotL * directLightColor * shadow;
     lighting = max(lighting, vec3(0.01));
 
