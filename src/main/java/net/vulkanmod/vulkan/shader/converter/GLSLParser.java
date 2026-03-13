@@ -332,10 +332,8 @@ public class GLSLParser {
                         }
                     }
                     case "out" -> {
-                        if (currentOutAtt > 0) {
-                            throw new UnsupportedOperationException("Multiple outputs not currently supported.");
-                        }
-
+                        // Support multiple fragment outputs for MRT (deferred rendering/G-Buffer)
+                        // Automatically assign locations if not explicitly specified
                         attribute.setLocation(currentOutAtt++);
                         fragOutAttributes.add(attribute);
                     }

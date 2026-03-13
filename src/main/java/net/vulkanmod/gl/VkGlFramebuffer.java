@@ -213,7 +213,7 @@ public class VkGlFramebuffer {
         boolean hasDepthImage = this.depthAttachment != null;
         VulkanImage depthImage = this.depthAttachment;
 
-        this.framebuffer = Framebuffer.builder(this.colorAttachment, depthImage)
+        this.framebuffer = Framebuffer.builderSingle(this.colorAttachment, depthImage)
                                       .build();
         RenderPass.Builder builder = RenderPass.builder(this.framebuffer);
 

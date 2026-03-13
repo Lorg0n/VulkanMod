@@ -3,12 +3,17 @@ package net.vulkanmod.vulkan.shader;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.Level;
 import net.vulkanmod.vulkan.VRenderSystem;
 import net.vulkanmod.vulkan.shader.layout.Uniform;
 import net.vulkanmod.vulkan.util.MappedBuffer;
 
 import java.util.function.Supplier;
 
+/**
+ * Enhanced Uniforms system with deferred rendering support
+ * Expands standard uniforms with shader variables for advanced effects
+ */
 public class Uniforms {
 
     public static Object2ReferenceOpenHashMap<String, Supplier<Integer>> vec1i_uniformMap = new Object2ReferenceOpenHashMap<>();
@@ -31,6 +36,10 @@ public class Uniforms {
         mat4f_uniformMap.put("TextureMat", VRenderSystem::getTextureMatrix);
         mat4f_uniformMap.put("LightSpaceMat", VRenderSystem::getLightSpaceMatrix);
 
+        // Deferred rendering uniforms - previous frame matrices for TAA/motion blur
+        mat4f_uniformMap.put("gbufferPreviousModelView", VRenderSystem::getPreviousModelViewMatrix);
+        mat4f_uniformMap.put("gbufferPreviousProjection", VRenderSystem::getPreviousProjectionMatrix);
+
         //Vec1i
         vec1i_uniformMap.put("EndPortalLayers", () -> 15);
 
@@ -50,7 +59,26 @@ public class Uniforms {
             var level = Minecraft.getInstance().level;
             return level != null ? level.getSunAngle(1.0f) : 0.0f;
         });
+        
+        // World time in ticks
+        vec1f_uniformMap.put("worldTime", () -> {
+            Level level = Minecraft.getInstance().level;
+            return level != null ? (float) (level.getGameTime() % 24000L) : 0.0f;
+        });
+
+        // Game time for animations
         vec1f_uniformMap.put("GameTime", () -> (float) ((System.currentTimeMillis() % 100000L) / 1000.0f));
+
+        // Rain and weather effects
+        vec1f_uniformMap.put("rainStrength", () -> {
+            Level level = Minecraft.getInstance().level;
+            return level != null ? level.getRainLevel(1.0f) : 0.0f;
+        });
+
+        vec1f_uniformMap.put("wetness", () -> {
+            Level level = Minecraft.getInstance().level;
+            return level != null ? level.getThunderLevel(1.0f) : 0.0f;
+        });
 
         //Vec2
         vec2f_uniformMap.put("ScreenSize", VRenderSystem::getScreenSize);
@@ -61,6 +89,16 @@ public class Uniforms {
         vec3f_uniformMap.put("ModelOffset", () -> VRenderSystem.modelOffset);
         vec3f_uniformMap.put("ChunkOffset", () -> VRenderSystem.modelOffset);
 
+        // Absolute world camera position (for deferred effects)
+        vec3f_uniformMap.put("cameraPosition", () -> {
+            var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+            if (camera.isInitialized()) {
+                return VRenderSystem.getCameraPosition(camera);
+            }
+            return VRenderSystem.cameraPosition;
+        });
+
+        // Legacy player position (backward compatibility)
         vec3f_uniformMap.put("PlayerPos", () -> {
             var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
             if (camera.isInitialized()) {

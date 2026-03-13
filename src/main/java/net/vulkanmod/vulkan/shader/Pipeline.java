@@ -185,6 +185,18 @@ public abstract class Pipeline {
         return this.pushConstants;
     }
 
+    /**
+     * Bind this pipeline to the command buffer
+     * Subclasses should override if they support pipeline binding
+     * 
+     * @param commandBuffer the command buffer to bind to
+     * @param state the pipeline state to use for binding
+     */
+    public void bind(VkCommandBuffer commandBuffer, PipelineState state) {
+        // Default implementation - subclasses should override
+        throw new UnsupportedOperationException("bind() must be implemented by subclass");
+    }
+
     public long getLayout() {
         return pipelineLayout;
     }

@@ -48,9 +48,16 @@ public abstract class VRenderSystem {
     public static MappedBuffer MVP = new MappedBuffer(16 * 4);
     public static MappedBuffer lightSpaceMatrix = new MappedBuffer(16 * 4);
 
+    // Deferred rendering - previous frame matrices for TAA and motion blur
+    public static MappedBuffer previousModelViewMatrix = new MappedBuffer(16 * 4);
+    public static MappedBuffer previousProjectionMatrix = new MappedBuffer(16 * 4);
+
     public static MappedBuffer modelOffset = new MappedBuffer(3 * 4);
     public static MappedBuffer lightDirection0 = new MappedBuffer(3 * 4);
     public static MappedBuffer lightDirection1 = new MappedBuffer(3 * 4);
+
+    // Camera position in world space
+    public static MappedBuffer cameraPosition = new MappedBuffer(3 * 4);
 
     public static MappedBuffer shaderColor = new MappedBuffer(4 * 4);
     public static MappedBuffer shaderFogColor = new MappedBuffer(4 * 4);
@@ -148,6 +155,45 @@ public abstract class VRenderSystem {
 
     public static MappedBuffer getMVP() {
         return MVP;
+    }
+
+    /**
+     * Get previous frame model-view matrix (for TAA and motion blur)
+     */
+    public static MappedBuffer getPreviousModelViewMatrix() {
+        return previousModelViewMatrix;
+    }
+
+    /**
+     * Get previous frame projection matrix (for TAA and motion blur)
+     */
+    public static MappedBuffer getPreviousProjectionMatrix() {
+        return previousProjectionMatrix;
+    }
+
+    /**
+     * Update previous frame matrices from current (typically called at end of frame)
+     */
+    public static void updatePreviousMatrices() {
+        modelViewMatrix.buffer.asFloatBuffer().get(previousModelViewMatrix.buffer.asFloatBuffer().array());
+        projectionMatrix.buffer.asFloatBuffer().get(previousProjectionMatrix.buffer.asFloatBuffer().array());
+    }
+
+    /**
+     * Get camera position in world space
+     */
+    public static MappedBuffer getCameraPositionBuffer() {
+        return cameraPosition;
+    }
+
+    /**
+     * Get camera position from camera object
+     */
+    public static MappedBuffer getCameraPosition(net.minecraft.client.Camera camera) {
+        cameraPosition.putFloat(0, (float) camera.getPosition().x);
+        cameraPosition.putFloat(4, (float) camera.getPosition().y);
+        cameraPosition.putFloat(8, (float) camera.getPosition().z);
+        return cameraPosition;
     }
 
     public static void setModelOffset(float x, float y, float z) {

@@ -23,7 +23,27 @@ public interface MainPass {
 
     default void bindAsTexture() {}
 
+    /**
+     * Get color attachment by index (for MRT support)
+     */
+    default GpuTexture getColorAttachment(int index) {
+        if (index == 0) {
+            return getColorAttachment();
+        }
+        return null;
+    }
+
     default GpuTexture getColorAttachment() {
+        return null;
+    }
+
+    /**
+     * Get color attachment view by index (for MRT support)
+     */
+    default GpuTextureView getColorAttachmentView(int index) {
+        if (index == 0) {
+            return getColorAttachmentView();
+        }
         return null;
     }
 

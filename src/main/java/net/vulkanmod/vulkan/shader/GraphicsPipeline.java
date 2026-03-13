@@ -56,6 +56,11 @@ public class GraphicsPipeline extends Pipeline {
         return graphicsPipelines.computeIfAbsent(state, this::createGraphicsPipeline);
     }
 
+    @Override
+    public void bind(VkCommandBuffer commandBuffer, PipelineState state) {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, getHandle(state));
+    }
+
     private long createGraphicsPipeline(PipelineState state) {
         try (MemoryStack stack = stackPush()) {
             ByteBuffer entryPoint = stack.UTF8("main");

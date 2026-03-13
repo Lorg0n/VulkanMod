@@ -45,7 +45,7 @@ public class SwapChain extends Framebuffer {
         this.attachmentCount = 2;
         this.depthFormat = Vulkan.getDefaultDepthFormat();
 
-        this.hasColorAttachment = true;
+        this.hasColorAttachments = true;
         this.hasDepthAttachment = true;
 
         recreate();
@@ -99,11 +99,12 @@ public class SwapChain extends Framebuffer {
             createInfo.surface(Vulkan.getSurface());
 
             // Image settings
-            this.format = surfaceFormat.format();
+            int format = surfaceFormat.format();
+            this.colorFormats = new int[]{format};
             this.extent2D = VkExtent2D.create().set(extent);
 
             createInfo.minImageCount(requestedImages);
-            createInfo.imageFormat(this.format);
+            createInfo.imageFormat(format);
             createInfo.imageColorSpace(surfaceFormat.colorSpace());
             createInfo.imageExtent(extent);
             createInfo.imageArrayLayers(1);
@@ -148,9 +149,9 @@ public class SwapChain extends Framebuffer {
 
             for (int i = 0; i < pSwapchainImages.capacity(); i++) {
                 long imageId = pSwapchainImages.get(i);
-                long imageView = VulkanImage.createImageView(imageId, this.format, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1);
+                long imageView = VulkanImage.createImageView(imageId, this.getFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1, 1);
 
-                VulkanImage image = new VulkanImage("Swapchain", imageId, this.format, 1, this.width, this.height, 4, 0, imageView);
+                VulkanImage image = new VulkanImage("Swapchain", imageId, this.getFormat(), 1, this.width, this.height, 4, 0, imageView);
                 long samplerId = SamplerManager.getSampler(true, true, 0);
                 image.setSampler(samplerId);
                 this.swapChainImages.add(image);
