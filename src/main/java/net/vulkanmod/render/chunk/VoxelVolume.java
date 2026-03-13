@@ -7,9 +7,10 @@ import java.nio.ByteBuffer;
 import static org.lwjgl.vulkan.VK10.*;
 
 public class VoxelVolume {
-    public static final int WIDTH = 256;
-    public static final int HEIGHT = 256;
-    public static final int DEPTH = 256;
+    // Extends volume range to 512x512x512 (32x32 chunks without looping)
+    public static final int WIDTH = 512;
+    public static final int HEIGHT = 512;
+    public static final int DEPTH = 512;
 
     private static VulkanImage volumeImage;
 
@@ -22,7 +23,7 @@ public class VoxelVolume {
                 .setFormat(VK_FORMAT_R8_UNORM)
                 .setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
                 .setClamp(false)
-                .setLinearFiltering(true) // FIXED: Enabled Trilinear Filtering for smooth shadows
+                .setLinearFiltering(true)
                 .createVulkanImage();
 
         VTextureSelector.bindTexture(4, volumeImage);

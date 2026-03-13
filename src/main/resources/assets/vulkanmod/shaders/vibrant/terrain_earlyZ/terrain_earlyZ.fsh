@@ -48,7 +48,54 @@ float fbm(vec2 p) {
     return v;
 }
 
-// Smooth Soft Shadow for the Sun (reaches 64+ blocks)
+bool VoxelRayCast(vec3 startPos, vec3 dir, vec3 normal, float maxDist, out bool hitLight) {
+    startPos += normal * 0.05 + dir * 0.02;
+    vec3 pos = floor(startPos);
+    vec3 stepDir = sign(dir);
+    vec3 tDelta = abs(1.0 / dir);
+    vec3 tMax = (pos - startPos + max(stepDir, 0.0)) * tDelta;
+
+    hitLight = false;
+    float dist = 0.0;
+
+    for(int i = 0; i < 128; i++) {
+        if (dist > maxDist) break;
+
+        vec3 samplePos = (mod(pos, 512.0) + 0.5) / 512.0;
+        float voxel = texture(Sampler4, samplePos).r;
+
+        if (voxel > 0.8) {
+            return true;
+        } else if (voxel > 0.4) {
+            hitLight = true;
+            return true;
+        }
+
+        if (tMax.x < tMax.y) {
+            if (tMax.x < tMax.z) {
+                pos.x += stepDir.x;
+                dist = tMax.x;
+                tMax.x += tDelta.x;
+            } else {
+                pos.z += stepDir.z;
+                dist = tMax.z;
+                tMax.z += tDelta.z;
+            }
+        } else {
+            if (tMax.y < tMax.z) {
+                pos.y += stepDir.y;
+                dist = tMax.y;
+                tMax.y += tDelta.y;
+            } else {
+                pos.z += stepDir.z;
+                dist = tMax.z;
+                tMax.z += tDelta.z;
+            }
+        }
+    }
+    return false;
+}
+
 float VoxelSunShadow(vec3 startPos, vec3 lightDir, vec3 normal) {
     vec3 pos = startPos + normal * 0.1;
     float visibility = 1.0;
@@ -59,7 +106,7 @@ float VoxelSunShadow(vec3 startPos, vec3 lightDir, vec3 normal) {
         if(t > 64.0) break;
 
         vec3 p = pos + lightDir * t;
-        float v = texture(Sampler4, fract(p / 256.0)).r;
+        float v = texture(Sampler4, fract(p / 512.0)).r;
 
         if(v > 0.8) {
             visibility -= 0.6;
@@ -72,7 +119,6 @@ float VoxelSunShadow(vec3 startPos, vec3 lightDir, vec3 normal) {
     return max(visibility, 0.0);
 }
 
-// Deterministic Voxel Ambient Occlusion for localized contact shadows (Torches/Corners)
 float VoxelAO(vec3 startPos, vec3 normal) {
     float ao = 0.0;
 
@@ -95,7 +141,7 @@ float VoxelAO(vec3 startPos, vec3 normal) {
         for(int i = 1; i <= 3; i++) {
             float dist = float(i) * 0.7;
             vec3 p = startPos + normal * 0.1 + rayDir * dist;
-            float v = texture(Sampler4, fract(p / 256.0)).r;
+            float v = texture(Sampler4, fract(p / 512.0)).r;
             if(v > 0.8) {
                 rayAO += 1.0 / float(i);
             }

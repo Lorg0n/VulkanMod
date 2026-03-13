@@ -26,6 +26,8 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 public class BuildTask extends ChunkTask {
+    private static final byte[] EMPTY_VOXEL_DATA = new byte[16 * 16 * 16];
+
     @Nullable
     protected RenderRegion region;
 
@@ -79,8 +81,10 @@ public class BuildTask extends ChunkTask {
         BlockPos startBlockPos = new BlockPos(section.xOffset(), section.yOffset(), section.zOffset()).immutable();
         VisGraph visGraph = new VisGraph();
 
+        // FIXED: If the chunk is purely air, clear the old ghost data from the GPU 3D Volume using our empty array
         if (this.region == null) {
             compileResult.visibilitySet = visGraph.resolve();
+            compileResult.voxelData = EMPTY_VOXEL_DATA;
             return compileResult;
         }
 
@@ -109,7 +113,6 @@ public class BuildTask extends ChunkTask {
                         visGraph.setOpaque(blockPos);
                     }
 
-                    // FIXED: Vulkan 3D memory layout expects X, then Y, then Z.
                     if (blockState.canOcclude() || blockState.isSolidRender()) {
                         voxelData[x + y * 16 + z * 256] = (byte) 255;
                     } else if (blockState.getLightEmission() > 0) {
